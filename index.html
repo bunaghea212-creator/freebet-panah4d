@@ -3180,6 +3180,21 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape")closeDraw();
 });
 loadRemoteClaims();
+// Auto-Sync: refresh board data from the shared API every 5 seconds.
+// Existing page design and interactions remain unchanged.
+const PANAH_AUTO_SYNC_INTERVAL = 5000;
+setInterval(() => {
+  if (document.visibilityState === "visible") {
+    loadRemoteClaims();
+  }
+}, PANAH_AUTO_SYNC_INTERVAL);
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    loadRemoteClaims();
+  }
+});
+
 
 if(location.hash==="#freebetPageView"){
   showFreebetPage();
