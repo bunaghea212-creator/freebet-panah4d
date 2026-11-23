@@ -2690,7 +2690,7 @@ syncWheelPrizes();
 const perPage = 10;
 let extraData = [];
 let pendingClaimRecord = null;
-const PANAH_API = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev"; // Ganti setelah Worker di-deploy
+const PANAH_API = "https://panah4d-claim-api.bunaghea212.workers.dev"; // Ganti setelah Worker di-deploy
 async function loadRemoteClaims(){
   try{
     const response=await fetch(PANAH_API+"/api/claims",{cache:"no-store"});
