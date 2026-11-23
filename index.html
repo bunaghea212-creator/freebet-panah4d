@@ -2476,7 +2476,7 @@ tbody tr:hover{background:#fff5e3 !important}
 
   <section id="freebet-board">
     <div class="board-head">
-      <div><h2>Board ID Freebet</h2><p>100 ID contoh untuk demo · klaim nyata dimuat dari database</p></div>
+      <div><h2>Board ID Freebet</h2><p>Data demo dan klaim terbaru dimuat langsung dari database Cloudflare</p></div>
       <div class="record-count" id="recordCount">100 data</div>
     </div>
     <div class="toolbar">
@@ -2497,7 +2497,7 @@ tbody tr:hover{background:#fff5e3 !important}
   </section>
 
   <div class="disclaimer">
-    <b>DATA DEMO:</b> 100 ID contoh pada board ini hanya simulasi tampilan, bukan riwayat klaim member sungguhan. Klaim nyata ditampilkan terpisah setelah tercatat di database dan tetap memerlukan verifikasi admin.
+    <b>CATATAN:</b> ID bertanda DATA DEMO adalah data simulasi yang dimasukkan ke database. Baris tanpa label demo adalah catatan klaim yang tersimpan di database dan masih menunggu pemeriksaan admin. Tampilan ini bukan bukti verifikasi deposit.
   </div>
   <div class="footer" id="footer">PANAH4D · FREEBET CENTER</div>
 </div>
@@ -2683,43 +2683,67 @@ const KEY = "panah4d_modern_draws_v1";
 const prizes = [20000,25000,50000,75000,100000];
 const formatPrize = value => "Rp" + Number(value).toLocaleString("id-ID");
 function syncWheelPrizes(){
-  // Kept as a compatibility shim; Scratch & Win draws directly from the same prizes array.
+  // Kompatibilitas dengan versi desain sebelumnya.
 }
 syncWheelPrizes();
+
 const perPage = 10;
 let extraData = [];
 let pendingClaimRecord = null;
 const PANAH_API = "https://panah4d-api.bunaghea212.workers.dev";
+
+function normalizeClaim(row){
+  const demo = row.is_demo === 1 || row.is_demo === true || row.isDemo === true;
+  return {
+    ...row,
+    username: String(row.username || row.nama || ""),
+    prize: Number(row.prize || 0),
+    is_demo: demo ? 1 : 0
+  };
+}
+
 async function loadRemoteClaims(){
+  const body = document.getElementById("boardBody");
+  if(body) body.innerHTML = '<tr><td colspan="6" class="empty">Memuat data dari database...</td></tr>';
   try{
-    const response=await fetch(PANAH_API+"/api/claims",{cache:"no-store"});
-    if(!response.ok)throw new Error("Gagal memuat data claim");
-    const data=await response.json();
-    extraData=Array.isArray(data.claims)?data.claims:[];
+    const response = await fetch(PANAH_API + "/api/claims", {
+      method:"GET",
+      cache:"no-store",
+      headers:{"Accept":"application/json"}
+    });
+    if(!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if(!Array.isArray(data.claims)) throw new Error("Format API /api/claims tidak sesuai");
+    extraData = data.claims.map(normalizeClaim).filter(x=>x.username);
     renderBoard();
+    return extraData;
   }catch(error){
-    console.error(error);
-    document.getElementById("boardBody").innerHTML='<tr><td colspan="6" class="empty">Data online belum terhubung. Periksa konfigurasi API.</td></tr>';
+    console.error("PANAH4D API:", error);
+    if(body) body.innerHTML = '<tr><td colspan="6" class="empty">Data database gagal dimuat. Periksa Worker /api/claims.</td></tr>';
+    const count=document.getElementById("recordCount");
+    if(count) count.textContent="Gagal memuat";
+    return [];
   }
 }
 let page = 0;
 let busy = false;
 
-function readSaved(){
-  try{
-    const value = JSON.parse(localStorage.getItem(KEY) || "[]");
-    return Array.isArray(value) ? value : [];
-  }catch(e){ return []; }
-}
-function saveSaved(){
-  // Data claim sekarang disimpan di Cloudflare D1 melalui Worker, bukan localStorage.
-}
+function readSaved(){ return []; }
+function saveSaved(){ /* Klaim disimpan di Cloudflare D1. */ }
+
 function allRows(){
-  const added = extraData.map(x => ({
-    nama:x.username, freebet:"Rp"+Number(x.prize).toLocaleString("id-ID"),
-    bonus:"-", status:"PERLU VERIFIKASI AKUN", verification:"MENUNGGU ADMIN", isNew:true
-  }));
-  return [...added, ...initialData.map(x=>({...x,verification:"—",isDemo:true}))];
+  return extraData.map(row=>{
+    const demo = row.is_demo === 1 || row.is_demo === true || row.isDemo === true;
+    return {
+      nama: row.username,
+      freebet: formatPrize(row.prize),
+      bonus: "-",
+      status: demo ? "DATA DEMO" : "MENUNGGU VERIFIKASI",
+      verification: demo ? "—" : "MENUNGGU ADMIN",
+      isDemo: demo,
+      created_at: row.created_at || ""
+    };
+  });
 }
 function escapeText(v){
   return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2746,11 +2770,12 @@ function renderBoard(){
         <td>${escapeText(x.nama)}</td>
         <td>${escapeText(x.freebet)}</td>
         <td>${escapeText(x.bonus)}</td>
-        <td>${x.isDemo ? '<span class="status neutral">DATA DEMO</span>' : '<span class="status pending">PERLU VERIFIKASI AKUN</span>'}</td>
-        <td>${x.verification==="—" ? '<span class="status neutral">—</span>' : '<button class="verify-link-btn" type="button" onclick="openVerificationLink()">VERIFIKASI</button><br><small>Rp10.000</small>'}</td>
+        <td>${x.isDemo ? '<span class="status neutral">DATA DEMO</span>' : '<span class="status pending">TERCATAT · CEK ADMIN</span>'}</td>
+        <td>${x.isDemo ? '<span class="status neutral">—</span>' : '<span class="status pending">MENUNGGU ADMIN</span>'}</td>
       </tr>`).join("");
   }
-  document.getElementById("totalCount").textContent=allRows().length.toLocaleString("id-ID");
+  const totalCount=document.getElementById("totalCount");
+  if(totalCount) totalCount.textContent=allRows().length.toLocaleString("id-ID");
   document.getElementById("recordCount").textContent=rows.length+" data";
   document.getElementById("pageText").textContent=`Halaman ${page+1} dari ${pages}`;
   document.getElementById("prev").disabled=page===0;
@@ -3066,7 +3091,7 @@ function completeScratch(){
   const username=document.getElementById("username").value.trim().replace(/\s+/g,"");
   // Claim sudah dicatat di database Cloudflare ketika proses dimulai.
   // Di sini hanya menampilkan hasil dan memperbarui papan dari data server.
-  if(pendingClaimRecord && !extraData.some(x=>x.username.toLowerCase()===username.toLowerCase())){
+  if(pendingClaimRecord && !extraData.some(x=>String(x.username).toLowerCase()===username.toLowerCase())){
     extraData.unshift(pendingClaimRecord);
   }
   document.getElementById("resultUser").textContent=username;
@@ -3108,9 +3133,15 @@ async function runDraw(){
       await loadRemoteClaims();return;
     }
     if(!response.ok)throw new Error(data.error||"Server tidak dapat memproses claim.");
-    pendingScratchPrize=Number(data.claim.prize);
-    pendingClaimRecord=data.claim;
-    extraData.unshift(pendingClaimRecord);
+    const savedClaim = data.claim || data;
+    if(!savedClaim || !Number.isFinite(Number(savedClaim.prize)) || Number(savedClaim.prize) <= 0){
+      throw new Error("Server tidak mengirim nominal hadiah yang valid.");
+    }
+    pendingScratchPrize=Number(savedClaim.prize);
+    pendingClaimRecord=normalizeClaim(savedClaim);
+    if(!extraData.some(x=>String(x.username).toLowerCase()===username.toLowerCase())){
+      extraData.unshift(pendingClaimRecord);
+    }
     document.getElementById("scratchPrizeValue").textContent=formatPrize(pendingScratchPrize);
     document.getElementById("scratchCard").classList.add("is-ready");
     document.getElementById("prizeLockupText").textContent="GOSOK KARTU — HADIAH SUDAH DIKUNCI";
