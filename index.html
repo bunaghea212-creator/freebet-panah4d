@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#d99b2b">
 <title>PANAH4D — Freebet Center | HOME & FREEBET</title>
-  
 <style>
 :root{
   --bg:#101317;--surface:#181d23;--surface-2:#20262e;--line:#303943;
@@ -2557,6 +2556,7 @@ tbody tr:hover{background:#fff5e3 !important}
     <button class="primary-action" id="drawButton" type="button" onclick="runDraw()">MULAI GOSOK</button>
     <div class="result" id="result">
       <strong>Hasil undian tercatat</strong><br>
+      ID Klaim: <b id="resultClaimId">—</b><br>
       Username: <b id="resultUser"></b><br>
       Hadiah: <b id="resultPrize"></b><br>
       Status klaim: <b>NEW MEMBER PERLU VERIFIKASI</b>
@@ -2576,6 +2576,19 @@ tbody tr:hover{background:#fff5e3 !important}
 
 
 <script>
+const demoIds = [
+  "guekaya232", "dapasi323", "dpi122", "raka839", "mila527",
+  "seno184", "bima726", "naya315", "dika942", "luna638",
+  "fajri251", "nando827", "rendi493", "aldi715", "putra362",
+  "kayla918", "zidan246", "davin583", "riko731", "caca429",
+  "yoga852", "tania164", "ferry937", "andika528", "nabila376",
+  "rian625", "della813", "viko294", "salsa741", "bryan506",
+  "agung382", "nadia957", "fikri214", "dimas689", "rara435",
+  "galih821", "tiara163", "kevin794", "amelia528", "farhan306",
+  "doni917", "nisa482", "wahyu735", "dewi291", "arif863",
+  "siska547", "ilham128", "yuni694", "bagas351", "rehan826"
+];
+
 const initialData = [
 
 
@@ -2705,9 +2718,13 @@ function normalizeClaim(row){
   };
 }
 
-async function loadRemoteClaims(){
+let lastRemoteClaimsSnapshot = null;
+async function loadRemoteClaims({silent=false}={}){
   const body = document.getElementById("boardBody");
-  if(body) body.innerHTML = '<tr><td colspan="6" class="empty">Memuat data dari database...</td></tr>';
+  // Tampilkan status memuat hanya pada pemuatan pertama, bukan saat sinkronisasi latar.
+  if(!silent && body && lastRemoteClaimsSnapshot === null){
+    body.innerHTML = '<tr><td colspan="6" class="empty">Memuat data dari database...</td></tr>';
+  }
   try{
     const response = await fetch(PANAH_API + "/api/claims", {
       method:"GET",
@@ -2717,15 +2734,24 @@ async function loadRemoteClaims(){
     if(!response.ok) throw new Error("HTTP " + response.status);
     const data = await response.json();
     if(!Array.isArray(data.claims)) throw new Error("Format API /api/claims tidak sesuai");
-    extraData = data.claims.map(normalizeClaim).filter(x=>x.username);
-    renderBoard();
+    const nextClaims = data.claims.map(normalizeClaim).filter(x=>x.username);
+    const snapshot = JSON.stringify(nextClaims);
+    // Jangan gambar ulang tabel jika data tidak berubah: halaman tetap diam tanpa efek refresh.
+    if(snapshot !== lastRemoteClaimsSnapshot){
+      extraData = nextClaims;
+      lastRemoteClaimsSnapshot = snapshot;
+      renderBoard();
+    }
     return extraData;
   }catch(error){
     console.error("PANAH4D API:", error);
-    if(body) body.innerHTML = '<tr><td colspan="6" class="empty">Data database gagal dimuat. Periksa Worker /api/claims.</td></tr>';
-    const count=document.getElementById("recordCount");
-    if(count) count.textContent="Gagal memuat";
-    return [];
+    // Sinkronisasi latar gagal tidak mengosongkan atau mengganggu tampilan yang sedang dilihat.
+    if(!silent){
+      if(body) body.innerHTML = '<tr><td colspan="6" class="empty">Data database gagal dimuat. Periksa Worker /api/claims.</td></tr>';
+      const count=document.getElementById("recordCount");
+      if(count) count.textContent="Gagal memuat";
+    }
+    return extraData;
   }
 }
 let page = 0;
@@ -3098,6 +3124,8 @@ function completeScratch(){
   if(pendingClaimRecord && !extraData.some(x=>String(x.username).toLowerCase()===username.toLowerCase())){
     extraData.unshift(pendingClaimRecord);
   }
+  document.getElementById("resultClaimId").textContent =
+    pendingClaimRecord && pendingClaimRecord.id != null ? String(pendingClaimRecord.id) : "ID tidak tersedia dari server";
   document.getElementById("resultUser").textContent=username;
   document.getElementById("resultPrize").textContent=formatPrize(pendingScratchPrize);
   document.getElementById("result").classList.add("show");
@@ -3187,13 +3215,13 @@ loadRemoteClaims();
 const PANAH_AUTO_SYNC_INTERVAL = 5000;
 setInterval(() => {
   if (document.visibilityState === "visible") {
-    loadRemoteClaims();
+    loadRemoteClaims({silent:true});
   }
 }, PANAH_AUTO_SYNC_INTERVAL);
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
-    loadRemoteClaims();
+    loadRemoteClaims({silent:true});
   }
 });
 
@@ -3204,7 +3232,9 @@ if(location.hash==="#freebetPageView"){
 
 </script>
 
-
+<!-- Start of  Zendesk Widget script -->
+<script id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=27c58f31-4c95-41cf-8e12-b7a110227e14"> </script>
+<!-- End of  Zendesk Widget script -->
 
 </body>
 </html>
