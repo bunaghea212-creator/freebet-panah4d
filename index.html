@@ -2690,8 +2690,7 @@ syncWheelPrizes();
 const perPage = 10;
 let extraData = [];
 let pendingClaimRecord = null;
-const PANAH_API = "https://panah4d-api.bunaghea212.workers.dev";
-
+const PANAH_API = "https://panah4d-sync-api.bunaghea212.workers.dev";
 function normalizeClaim(row){
   const demo = row.is_demo === 1 || row.is_demo === true || row.isDemo === true;
   return {
