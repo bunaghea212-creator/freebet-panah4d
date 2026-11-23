@@ -47,6 +47,8 @@ button{
 button:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
 button:disabled{opacity:.5;cursor:not-allowed;transform:none}
 button.secondary{background:#253650;color:var(--text);border:1px solid #354967}
+button.danger{background:#612536;color:#ffe8ed;border:1px solid #8d354d}
+button.danger:hover:not(:disabled){background:#7a2c40}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
 .stat{background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:16px}
 .stat span{color:var(--muted);font-size:13px}
@@ -239,19 +241,31 @@ async function loadClaims() {
       }
 
       const actionCell = document.createElement("td");
+      actionCell.style.display = "flex";
+      actionCell.style.gap = "8px";
+      actionCell.style.alignItems = "center";
+
       if (claim.status === "PENDING") {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "action-btn";
-        button.textContent = "Verifikasi";
-        button.addEventListener("click", () => verifyClaim(claim.id, button));
-        actionCell.appendChild(button);
+        const verifyButton = document.createElement("button");
+        verifyButton.type = "button";
+        verifyButton.className = "action-btn";
+        verifyButton.textContent = "Verifikasi";
+        verifyButton.addEventListener("click", () => verifyClaim(claim.id, verifyButton));
+        actionCell.appendChild(verifyButton);
       } else {
         const tag = document.createElement("span");
         tag.className = "pill ok";
         tag.textContent = "SELESAI";
         actionCell.appendChild(tag);
       }
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "action-btn danger";
+      deleteButton.textContent = "Hapus";
+      deleteButton.addEventListener("click", () => deleteClaim(claim.id, claim.username, deleteButton));
+      actionCell.appendChild(deleteButton);
+
       tr.appendChild(actionCell);
       tbody.appendChild(tr);
     }
@@ -280,6 +294,27 @@ async function verifyClaim(id, button) {
       body: JSON.stringify({ id, adminName: "Admin" })
     });
     message($("msg"), "Klaim #" + id + " berhasil ditandai SELESAI.", "success");
+    await loadClaims();
+  } catch (error) {
+    message($("msg"), error.message, "error");
+    button.disabled = false;
+  }
+}
+
+async function deleteClaim(id, username, button) {
+  const confirmed = confirm(
+    "Hapus data klaim milik " + username + " (ID " + id + ")?\\n\\n" +
+    "Data akan dihapus dari database bersama dan tidak bisa dipulihkan dari panel ini."
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  try {
+    await api("/api/admin/delete", {
+      method: "POST",
+      body: JSON.stringify({ id })
+    });
+    message($("msg"), "Data klaim " + username + " berhasil dihapus.", "success");
     await loadClaims();
   } catch (error) {
     message($("msg"), error.message, "error");
