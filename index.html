@@ -2476,7 +2476,7 @@ tbody tr:hover{background:#fff5e3 !important}
 
   <section id="freebet-board">
     <div class="board-head">
-      <div><h2>Board ID Freebet</h2><p>Riwayat klaim tersimpan langsung di database Cloudflare</p></div>
+      <div><h2>Board ID Freebet</h2><p>100 ID contoh untuk pratinjau; bukan bukti transaksi atau verifikasi member nyata. Klaim asli dimuat dari database Cloudflare.</p></div>
       <div class="record-count" id="recordCount">100 data</div>
     </div>
     <div class="toolbar">
@@ -2715,7 +2715,7 @@ async function loadRemoteClaims(){
     if(!response.ok) throw new Error("HTTP " + response.status);
     const data = await response.json();
     if(!Array.isArray(data.claims)) throw new Error("Format API /api/claims tidak sesuai");
-    extraData = data.claims.map(normalizeClaim).filter(x=>x.username && !x.is_demo);
+    extraData = data.claims.map(normalizeClaim).filter(x=>x.username);
     renderBoard();
     return extraData;
   }catch(error){
@@ -2733,17 +2733,19 @@ function readSaved(){ return []; }
 function saveSaved(){ /* Klaim disimpan di Cloudflare D1. */ }
 
 function allRows(){
-  return extraData
-    .filter(row => !(row.is_demo === 1 || row.is_demo === true || row.isDemo === true))
-    .map(row => ({
+  return extraData.map(row => {
+    const isDemo = row.is_demo === 1 || row.is_demo === true || row.isDemo === true;
+    return {
       nama: row.username,
       freebet: formatPrize(row.prize),
       bonus: "-",
-      status: String(row.status_claim || "BERHASIL").toUpperCase(),
-      verification: String(row.deposit_status || "MENUNGGU VERIFIKASI").toUpperCase(),
-      isDemo: false,
+      // Status pada baris contoh hanya ilustrasi tampilan, bukan bukti klaim nyata.
+      status: isDemo ? "BERHASIL" : String(row.status_claim || "BERHASIL").toUpperCase(),
+      verification: isDemo ? "SELESAI" : String(row.deposit_status || "MENUNGGU VERIFIKASI").toUpperCase(),
+      isDemo,
       created_at: row.created_at || ""
-    }));
+    };
+  });
 }
 function escapeText(v){
   return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
