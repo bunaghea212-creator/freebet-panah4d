@@ -3221,7 +3221,7 @@ async function runDraw(){
   const input=document.getElementById("username");
   const username=input.value.trim().replace(/\s+/g,"");
   if(!/^[a-zA-Z0-9_.-]{3,24}$/.test(username)){
-    alert("Masukkan username 3–24 karakter (huruf, angka, titik, _ atau -).");
+    alert("Masukkan username Anda Terlebih dulu );
     input.focus();return;
   }
   if(allRows().some(x=>x.nama.toLowerCase()===username.toLowerCase())){
